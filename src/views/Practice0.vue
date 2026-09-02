@@ -25,6 +25,7 @@
     onMounted(() => {
         // Escena
         const scene = new THREE.Scene();
+        scene.background = new THREE.Color('white');
 
         const width = container.value.clientWidth;
         const height = container.value.clientHeight;
@@ -94,7 +95,7 @@
         const geometry = new THREE.BoxGeometry(1, 1, 1);
 
         // Material
-        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const material = new THREE.MeshBasicMaterial({ color: 0x000000 });
 
         material.wireframe = true;
 
