@@ -11,7 +11,7 @@ import { RouterLink, RouterView } from 'vue-router'
 
       <nav class="navbar__links">
         <RouterLink to="/">Practica 0</RouterLink>
-        <RouterLink to="/cube">Cubo</RouterLink>
+        <RouterLink to="/P1">Practica 1</RouterLink>
       </nav>
     </header>
 
