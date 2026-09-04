@@ -24,7 +24,7 @@ function drawBox(x, y, z){
 }
 
 export function createScene1(valueX, valueY, valueZ) {
-  const scene = new THREE.Scene()
+  const scene = new THREE.Group()
 
   scene.add(createAxes())  
 
