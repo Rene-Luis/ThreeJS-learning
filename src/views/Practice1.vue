@@ -1,274 +1,454 @@
 <script setup>
-    import { ref, onMounted, onUnmounted } from 'vue'
-    import * as THREE from 'three'
-    import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 
-    import { createScene1 } from '../Scripts/Practice1/createScene1.js'
-    import { createScene2 } from '../Scripts/Practice1/createScene2.js'
+/*
+    npm run lint
+    npm run build
+    npm run dev
+*/
 
-    const container = ref(null);
+import { ref, onMounted, onUnmounted } from 'vue'
+import * as THREE from 'three'
 
-    let renderer = null;
-    let camera = null;
-    let animationId = null;
-
-    let activeScene = null;
-    let selectedScene = 1;
-
-    let scene1 = null;
-    let scene2 = null;
-
-    let valueX = 1;
-    let valueY = 1;
-    let valueZ = 1;
-
-    let orthoCamera = false;
-    let sceneChange = false;
+import { createScene1 } from '../Scripts/Practice1/createScene1.js'
+import { createScene2 } from '../Scripts/Practice1/createScene2.js'
 
 
-    function addLights(scene) {
-        const color = 0xFFFFFF;
-        const intensity = 1;
+// ============================================================
+// VUE
+// ============================================================
 
-        const ambientLight = new THREE.AmbientLight(
-            color,
-            intensity
-        );
-
-        const light = new THREE.DirectionalLight(
-            color,
-            intensity
-        );
-
-        light.position.set(0, 10, 0);
-        light.target.position.set(-5, 0, 0);
-
-        scene.add(ambientLight);
-        scene.add(light);
-        scene.add(light.target);
-    }
+const container = ref(null)
 
 
-    function changeCamera(activeOrtho){
-        const width = container.value.clientWidth;
-        const height = container.value.clientHeight;
+// ============================================================
+// THREE.JS - VARIABLES PRINCIPALES
+// ============================================================
 
-        if(activeOrtho){
-            const aspect = width / height;
-            const size = 5;
-
-            camera = new THREE.OrthographicCamera(
-                -size * aspect,
-                size * aspect,
-                size,
-                -size,
-                0.1,
-                1000
-            );
-
-        }else{
-            camera = new THREE.PerspectiveCamera(
-                60,
-                width / height,
-                0.1,
-                1000
-            );
-            
-        }
-
-        camera.position.set(9, 5, 9);
-        camera.lookAt(0, 0, 0);
-        camera.updateProjectionMatrix();
-
-        console.log(
-            "Ortho:",
-            camera.isOrthographicCamera,
-            "Perspective:",
-            camera.isPerspectiveCamera,
-            "Position:",
-            camera.position
-        );
-    }
-
-    function updateScene(){
-        if (selectedScene == 1){
-            scene1 = new THREE.Scene();
-            scene1.add(createScene1(valueX, valueY, valueZ));
-            addLights(scene1);
-            scene1.background = new THREE.Color('white');
-            activeScene = scene1;
-        }else if (selectedScene == 2){
-            scene2 = new THREE.Scene();
-            scene2.add(createScene2());
-            addLights(scene2);
-            scene2.background = new THREE.Color('white');
-            activeScene = scene2;
-        }
-    }
+let renderer
+let activeCamera 
+let orthographicCamera
+let perspectiveCamera
+let activeScene
+let animationId
 
 
-    function handleKeyDown(event) {
-        switch (event.key){
-            case 'X':
-                if(valueX < 5){
-                    valueX++;
-                    sceneChange = true;
-                }
-                break;
+// ============================================================
+// ESTADO DE LA APLICACIÓN
+// ============================================================
 
-            case 'x':
-                if(valueX > 1){
-                    valueX--;
-                    sceneChange = true;
-                }
-                break;
+let selectedScene = 1
 
-            case 'Y':
-                if(valueY < 5){
-                    valueY++;
-                    sceneChange = true;
-                }
-                break;
+let valueX = 1
+let valueY = 1
+let valueZ = 1
 
-            case 'y':
-                if(valueY > 1){
-                    valueY--;
-                    sceneChange = true;
-                }
-                break;
+let positionNumber = 0;
+let lastPosition = new THREE.Vector3(9,5,9);
 
-            case 'Z':
-                if(valueZ < 5){
-                    valueZ++;
-                    sceneChange = true;
-                }
-                break;
+// ============================================================
+// INICIALIZACIÓN
+// ============================================================
 
-            case 'z':
-                if(valueZ > 1){
-                    valueZ--;
-                    sceneChange = true;
-                }
-                break;
+onMounted(() => {
 
-            case 'p':
-            case 'P':
-                orthoCamera = !orthoCamera;
-                changeCamera(orthoCamera);
-                break;
+    initRenderer()
 
-            case '1':
-                if(selectedScene != 1){
-                    sceneChange = true;
-                    selectedScene = 1;
-                }
-                break;
+    createCamera()
 
-            case '2':
-                if(selectedScene != 2){
-                    sceneChange = true;
-                    selectedScene = 2;
-                }                
-                break;
-        }
+    loadScene()
 
-        if(sceneChange)
-            updateScene();
+    registerEvents()
 
-    }
+    startRenderLoop()
+
+})
 
 
-    onMounted(() => {
+// ============================================================
+// RENDERER
+// ============================================================
 
-        const width = container.value.clientWidth;
-        const height = container.value.clientHeight;
+function initRenderer() {
 
-        // ----- EVENTS -----
-        window.addEventListener('keydown', handleKeyDown);
-        window.addEventListener('resize', onResize);
+    const width = container.value.clientWidth
+    const height = container.value.clientHeight
 
-        // ----- RENDER -----
-        renderer = new THREE.WebGLRenderer({
-            antialias: true
-        })
+    renderer = new THREE.WebGLRenderer({
+        antialias: true
+    })
 
-        // ----- CAMERA -----
-        renderer.setSize(width, height);
-        container.value.appendChild(renderer.domElement);
+    renderer.setSize(width, height)
 
-        camera = new THREE.PerspectiveCamera(
-            60,
-            width / height,
+    container.value.appendChild(renderer.domElement)
+}
+
+
+// ============================================================
+// CAMERA
+// ============================================================
+
+function createCamera() {
+
+    const width = container.value.clientWidth
+    const height = container.value.clientHeight
+
+    const aspect = width / height
+
+    const size = 5
+
+    orthographicCamera = new THREE.OrthographicCamera(
+        -size * aspect,
+        size * aspect,
+        size,
+        -size,
             0.1,
             1000
-        );
+    )
 
-        camera.position.set(9, 5, 9);
-        camera.lookAt(0, 0, 0);
+    perspectiveCamera = new THREE.PerspectiveCamera(
+        60,
+        aspect,
+        0.1,
+        1000
+    )    
 
-        // Initialice scene 1
-        scene1 = new THREE.Scene();
-        scene1.add(createScene1(valueX, valueY, valueZ));
-        addLights(scene1);
-        scene1.background = new THREE.Color('white');
+    perspectiveCamera.position.set(9, 5, 9)
+    orthographicCamera.position.set(9, 5, 9)
 
-        scene2 = new THREE.Scene();
-        scene2.add(createScene2());
-        addLights(scene2);
-        scene2.background = new THREE.Color('white');
+    perspectiveCamera.lookAt(0, 0, 0)
+    orthographicCamera.lookAt(0, 0, 0)
 
-        activeScene = scene1;        
-
-        animate();
-    })
+    activeCamera = perspectiveCamera
+}
 
 
-    function animate() {
-        animationId = requestAnimationFrame(animate)
-        renderer.render(activeScene, camera)
+function toggleCamera() {
+    if (activeCamera === perspectiveCamera) {
+        activeCamera = orthographicCamera
+    } else {
+        activeCamera = perspectiveCamera
     }
 
+    activeCamera.position.set(lastPosition.x, lastPosition.y, lastPosition.z);
+    activeCamera.lookAt(0, 0, 0);
+}
 
-    function onResize() {
-        const width = container.value.clientWidth
-        const height = container.value.clientHeight
-        const aspect = width / height;
+function changeCameraPosition(){
+    switch (positionNumber) {
+        case 0:
+            lastPosition = new THREE.Vector3(6,0,0);
+            positionNumber++;
+            break;
+        
+        case 1: 
+            lastPosition = new THREE.Vector3(0,6,0);
+            positionNumber++;
+            break;
 
-        renderer.setSize(width, height)
+        case 2: 
+            lastPosition = new THREE.Vector3(0,0,6);
+            positionNumber++;
+            break;
 
-        if (camera.isPerspectiveCamera) {
-            camera.aspect = aspect;
-        } else if (camera.isOrthographicCamera) {
-            const size = 10;
-            camera.left = -size * aspect;
-            camera.right = size * aspect;
-            camera.top = size;
-            camera.bottom = -size;
+        case 3:
+        default:
+            lastPosition = new THREE.Vector3(9,5,9);
+            positionNumber = 0;
+    }
+
+    activeCamera.position.set(lastPosition.x, lastPosition.y, lastPosition.z);
+    activeCamera.lookAt(0, 0, 0);
+}
+
+
+// ============================================================
+// SCENES
+// ============================================================
+
+function loadScene() {
+
+    activeScene = new THREE.Scene()
+
+    activeScene.background = new THREE.Color('white')
+
+    addLights(activeScene)
+
+    switch (selectedScene) {
+
+        case 1:
+            activeScene.add(createScene1( valueX, valueY, valueZ ))
+            break
+
+        case 2:
+            activeScene.add(createScene2())
+            break
+    }
+}
+
+
+// ============================================================
+// LIGHTS
+// ============================================================
+
+function addLights(scene) {
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1)
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
+
+    directionalLight.position.set(0, 10, 0)
+
+    directionalLight.target.position.set(-5, 0, 0)
+
+    scene.add(ambientLight)
+    scene.add(directionalLight)
+    scene.add(directionalLight.target)
+}
+
+
+// ============================================================
+// RENDER LOOP
+// ============================================================
+
+function startRenderLoop() {
+
+    function render() {
+
+        animationId = requestAnimationFrame(render)
+
+        renderer.render(
+            activeScene,
+            activeCamera
+        )
+    }
+
+    render()
+}
+
+
+// ============================================================
+// EVENTS
+// ============================================================
+
+function registerEvents() {
+
+    window.addEventListener(
+        'keydown',
+        handleKeyDown
+    )
+
+    window.addEventListener(
+        'resize',
+        handleResize
+    )
+}
+
+
+// ============================================================
+// KEYBOARD
+// ============================================================
+
+function handleKeyDown(event) {
+
+    switch (event.key) {
+
+        // ----------------------------------------------------
+        // Scene 1 dimensions
+        // ----------------------------------------------------
+
+        case 'X':
+            if (valueX < 5) {
+                valueX++
+                reloadScene()
+            }
+            break
+
+
+        case 'x':
+            if (valueX > 1) {
+                valueX--
+                reloadScene()
+            }
+            break
+
+
+        case 'Y':
+            if (valueY < 5) {
+                valueY++
+                reloadScene()
+            }
+            break
+
+
+        case 'y':
+            if (valueY > 1) {
+                valueY--
+                reloadScene()
+            }
+            break
+
+
+        case 'Z':
+            if (valueZ < 5) {
+                valueZ++
+                reloadScene()
+            }
+            break
+
+
+        case 'z':
+            if (valueZ > 1) {
+                valueZ--
+                reloadScene()
+            }
+            break
+
+
+        // ----------------------------------------------------
+        // Camera
+        // ----------------------------------------------------
+
+        case 'p':
+        case 'P':
+            toggleCamera()
+            break
+
+        case 'v':
+        case 'V':
+            changeCameraPosition();
+            break;
+
+
+        // ----------------------------------------------------
+        // Scenes
+        // ----------------------------------------------------
+
+        case '1':
+            selectedScene = 1
+            reloadScene()
+            break
+
+
+        case '2':
+            selectedScene = 2
+            reloadScene()
+            break
+    }
+}
+
+
+// ============================================================
+// RELOAD SCENE
+// ============================================================
+
+function reloadScene() {
+
+    disposeScene(activeScene)
+    loadScene()
+}
+
+
+// ============================================================
+// WINDOW RESIZE
+// ============================================================
+
+function handleResize() {
+
+    const width = container.value.clientWidth
+    const height = container.value.clientHeight
+
+    const aspect = width / height
+
+    renderer.setSize(
+        width,
+        height
+    )
+
+    if (activeCamera.isPerspectiveCamera) {
+
+        activeCamera.aspect = aspect
+
+    } else if (activeCamera.isOrthographicCamera) {
+
+        const size = 5
+
+        activeCamera.left = -size * aspect
+        activeCamera.right = size * aspect
+        activeCamera.top = size
+        activeCamera.bottom = -size
+    }
+
+    activeCamera.updateProjectionMatrix()
+}
+
+
+// ============================================================
+// MEMORY CLEANUP
+// ============================================================
+
+function disposeScene(scene) {
+
+    if (!scene) {
+        return
+    }
+
+    scene.traverse((object) => {
+
+        if (object.geometry) {
+            object.geometry.dispose()
         }
 
-        camera.updateProjectionMatrix();
-    }
+        if (object.material) {
 
+            if (Array.isArray(object.material)) {
 
-    onUnmounted(() => {
-        cancelAnimationFrame(animationId);
-        window.removeEventListener('resize', onResize);
-        window.removeEventListener('keydown', handleKeyDown);
-        renderer?.dispose();
+                object.material.forEach(
+                    material => material.dispose()
+                )
+
+            } else {
+
+                object.material.dispose()
+            }
+        }
     })
+}
+
+
+// ============================================================
+// VUE CLEANUP
+// ============================================================
+
+onUnmounted(() => {
+
+    cancelAnimationFrame(animationId)
+
+    window.removeEventListener(
+        'keydown',
+        handleKeyDown
+    )
+
+    window.removeEventListener(
+        'resize',
+        handleResize
+    )
+
+    disposeScene(activeScene)
+
+    renderer?.dispose()
+})
 
 </script>
 
+
 <template>
-    <div
-        ref="container"
-        class="three-container"
-    ></div>
+    <div ref="container" class="three-container"/>
 </template>
 
+
 <style scoped>
-    .three-container {
+.three-container {
     width: 100%;
-    height: 100vh;
-    }
+    height: 100%;
+}
 </style>
