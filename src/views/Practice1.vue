@@ -31,6 +31,11 @@ let perspectiveCamera
 let activeScene
 let animationId
 
+let cameraFront
+let cameraSide
+let cameraTop
+let cameraPerspective
+
 
 // ============================================================
 // ESTADO DE LA APLICACIÓN
@@ -44,6 +49,8 @@ let valueZ = 1
 
 let positionNumber = 0;
 let lastPosition = new THREE.Vector3(9,5,9);
+
+let active4views = false;
 
 // ============================================================
 // INICIALIZACIÓN
@@ -89,10 +96,13 @@ function initRenderer() {
 
 function createCamera() {
 
+    // ============================================================
+    // Cámaras principales: una perspectiva y otra orgonal
+
     const width = container.value.clientWidth
     const height = container.value.clientHeight
 
-    const aspect = width / height
+    let aspect = width / height
 
     const size = 5
 
@@ -119,6 +129,64 @@ function createCamera() {
     orthographicCamera.lookAt(0, 0, 0)
 
     activeCamera = perspectiveCamera
+
+    // ============================================================
+    // 4 cámaras secundarias: para generar la multivista
+
+    const halfWidth = width / 2
+    const halfHeight = height / 2
+
+    aspect = halfWidth / halfHeight
+
+    // 1. Vista frontal
+    cameraFront = new THREE.OrthographicCamera(
+        -size * aspect,
+         size * aspect,
+         size,
+        -size,
+         0.1,
+         1000
+    )
+
+    cameraFront.position.set(0, 0, 10)
+    cameraFront.lookAt(0, 0, 0)
+
+    // 2. Vista lateral
+    cameraSide = new THREE.OrthographicCamera(
+        -size * aspect,
+         size * aspect,
+         size,
+        -size,
+         0.1,
+         1000
+    )
+
+    cameraSide.position.set(10, 0, 0)
+    cameraSide.lookAt(0, 0, 0)
+
+    // 3. Vista superior
+    cameraTop = new THREE.OrthographicCamera(
+        -size * aspect,
+         size * aspect,
+         size,
+        -size,
+         0.1,
+         1000
+    )
+
+    cameraTop.position.set(0, 10, 0)
+    cameraTop.lookAt(0, 0, 0)
+
+    // 4. Perspectiva
+    cameraPerspective = new THREE.PerspectiveCamera(
+        60,
+        aspect,
+        0.1,
+        1000
+    )
+
+    cameraPerspective.position.set(8, 6, 8)
+    cameraPerspective.lookAt(0, 0, 0)
 }
 
 
@@ -132,6 +200,7 @@ function toggleCamera() {
     activeCamera.position.set(lastPosition.x, lastPosition.y, lastPosition.z);
     activeCamera.lookAt(0, 0, 0);
 }
+
 
 function changeCameraPosition(){
     switch (positionNumber) {
@@ -159,6 +228,7 @@ function changeCameraPosition(){
     activeCamera.position.set(lastPosition.x, lastPosition.y, lastPosition.z);
     activeCamera.lookAt(0, 0, 0);
 }
+
 
 
 // ============================================================
@@ -210,16 +280,132 @@ function addLights(scene) {
 // RENDER LOOP
 // ============================================================
 
-function startRenderLoop() {
-
+function startRenderLoop() { 
+    
     function render() {
 
         animationId = requestAnimationFrame(render)
+        
+        if(!active4views){
 
-        renderer.render(
-            activeScene,
-            activeCamera
-        )
+            renderer.setScissorTest(false)
+
+            const width = container.value.clientWidth
+            const height = container.value.clientHeight
+
+            renderer.setViewport(
+                0,
+                0,
+                width,
+                height
+            )
+
+            renderer.render(
+                activeScene,
+                activeCamera
+            )
+
+        }else{
+
+            const width = container.value.clientWidth
+            const height = container.value.clientHeight
+
+            const halfWidth = Math.floor(width / 2)
+            const halfHeight = Math.floor(height / 2)
+
+            renderer.setScissorTest(true)
+
+            // --------------------------------------------------
+            // Vista 1 - arriba izquierda
+
+            renderer.setViewport(
+                0,
+                halfHeight,
+                halfWidth,
+                halfHeight
+            )
+
+            renderer.setScissor(
+                0,
+                halfHeight,
+                halfWidth,
+                halfHeight
+            )
+
+            renderer.render(
+                activeScene,
+                cameraFront
+            )
+
+
+            // --------------------------------------------------
+            // Vista 2 - arriba derecha
+
+            renderer.setViewport(
+                halfWidth,
+                halfHeight,
+                halfWidth,
+                halfHeight
+            )
+
+            renderer.setScissor(
+                halfWidth,
+                halfHeight,
+                halfWidth,
+                halfHeight
+            )
+
+            renderer.render(
+                activeScene,
+                cameraSide
+            )
+
+
+            // --------------------------------------------------
+            // Vista 3 - abajo izquierda
+
+            renderer.setViewport(
+                0,
+                0,
+                halfWidth,
+                halfHeight
+            )
+
+            renderer.setScissor(
+                0,
+                0,
+                halfWidth,
+                halfHeight
+            )
+
+            renderer.render(
+                activeScene,
+                cameraTop
+            )
+
+
+            // --------------------------------------------------
+            // Vista 4 - abajo derecha
+
+            renderer.setViewport(
+                halfWidth,
+                0,
+                halfWidth,
+                halfHeight
+            )
+
+            renderer.setScissor(
+                halfWidth,
+                0,
+                halfWidth,
+                halfHeight
+            )
+
+            renderer.render(
+                activeScene,
+                cameraPerspective
+            )
+        }
     }
 
     render()
@@ -318,6 +504,10 @@ function handleKeyDown(event) {
             changeCameraPosition();
             break;
 
+        case '4':
+            active4views = !active4views;
+            break;
+
 
         // ----------------------------------------------------
         // Scenes
@@ -333,6 +523,8 @@ function handleKeyDown(event) {
             selectedScene = 2
             reloadScene()
             break
+
+        
     }
 }
 
