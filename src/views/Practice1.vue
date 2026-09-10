@@ -11,6 +11,7 @@ import * as THREE from 'three'
 
 import { createScene1 } from '../Scripts/Practice1/createScene1.js'
 import { createScene2 } from '../Scripts/Practice1/createScene2.js'
+import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
 
 
 // ============================================================
@@ -41,16 +42,73 @@ let cameraPerspective
 // ESTADO DE LA APLICACIÓN
 // ============================================================
 
-let selectedScene = 1
+const params = {
+    
+    selectedScene: 1,
 
-let valueX = 1
-let valueY = 1
-let valueZ = 1
+    valueX: 1,
+    valueY: 1,
+    valueZ: 1,
 
-let positionNumber = 0;
+    cameraType: "Perspective",
+    positionNumber: 4,
+    active4views: false,    
+}
+
+
 let lastPosition = new THREE.Vector3(9,5,9);
 
-let active4views = false;
+
+// ============================================================
+// GUI
+// ============================================================
+
+let gui
+
+function createGUI() {
+
+    gui = new GUI({
+        container: container.value
+    });
+
+    
+    const sceneFolder = gui.addFolder('Escena')
+    const boxFolder = gui.addFolder('Cajas')
+    const cameraFolder = gui.addFolder('Cámara')
+
+    sceneFolder.add(params, 'selectedScene', 1, 2, 1).name("Escena seleccionada")
+        .onChange(() => {
+            reloadScene();
+        });
+
+    boxFolder.add(params, 'valueX', 1, 5, 1).name("En el eje X")
+        .onChange(() => {
+            reloadScene();
+        });
+
+    boxFolder.add(params, 'valueY', 1, 5, 1).name("En el eje Y")
+        .onChange(() => {
+            reloadScene();
+        });
+
+    boxFolder.add(params, 'valueZ', 1, 5, 1).name("En el eje Z")
+        .onChange(() => {
+            reloadScene();
+        });
+
+    gui.add(params, 'cameraType', [
+        'Perspective',
+        'Orthographic'
+    ]).onChange(() => { toggleCamera(); });
+
+    cameraFolder.add(params, 'positionNumber', 1, 4, 1).name("Posición")
+        .onChange(() => {
+            changeCameraPosition();
+        });
+
+    cameraFolder.add(params, 'active4views').name("4 vistas")
+
+}
 
 // ============================================================
 // INICIALIZACIÓN
@@ -58,15 +116,17 @@ let active4views = false;
 
 onMounted(() => {
 
-    initRenderer()
+    initRenderer();
 
-    createCamera()
+    createCamera();
 
-    loadScene()
+    loadScene();
 
-    registerEvents()
+    createGUI();
 
-    startRenderLoop()
+    registerEvents();
+
+    startRenderLoop();
 
 })
 
@@ -88,7 +148,6 @@ function initRenderer() {
 
     container.value.appendChild(renderer.domElement)
 }
-
 
 // ============================================================
 // CAMERA
@@ -191,7 +250,7 @@ function createCamera() {
 
 
 function toggleCamera() {
-    if (activeCamera === perspectiveCamera) {
+    if (params.cameraType == "Orthographic") {
         activeCamera = orthographicCamera
     } else {
         activeCamera = perspectiveCamera
@@ -203,26 +262,26 @@ function toggleCamera() {
 
 
 function changeCameraPosition(){
-    switch (positionNumber) {
-        case 0:
+    switch (params.positionNumber) {
+        case 1:
             lastPosition = new THREE.Vector3(6,0,0);
-            positionNumber++;
+            //positionNumber++;
             break;
         
-        case 1: 
-            lastPosition = new THREE.Vector3(0,6,0);
-            positionNumber++;
-            break;
-
         case 2: 
-            lastPosition = new THREE.Vector3(0,0,6);
-            positionNumber++;
+            lastPosition = new THREE.Vector3(0,6,0);
+            //positionNumber++;
             break;
 
-        case 3:
+        case 3: 
+            lastPosition = new THREE.Vector3(0,0,6);
+            //positionNumber++;
+            break;
+
+        case 4:
         default:
             lastPosition = new THREE.Vector3(9,5,9);
-            positionNumber = 0;
+            //positionNumber = 0;
     }
 
     activeCamera.position.set(lastPosition.x, lastPosition.y, lastPosition.z);
@@ -243,10 +302,10 @@ function loadScene() {
 
     addLights(activeScene)
 
-    switch (selectedScene) {
+    switch (params.selectedScene) {
 
         case 1:
-            activeScene.add(createScene1( valueX, valueY, valueZ ))
+            activeScene.add(createScene1( params.valueX, params.valueY, params.valueZ ))
             break
 
         case 2:
@@ -286,7 +345,7 @@ function startRenderLoop() {
 
         animationId = requestAnimationFrame(render)
         
-        if(!active4views){
+        if(!params.active4views){
 
             renderer.setScissorTest(false)
 
@@ -442,17 +501,18 @@ function handleKeyDown(event) {
         // Scene 1 dimensions
         // ----------------------------------------------------
 
+ /*
         case 'X':
-            if (valueX < 5) {
-                valueX++
+            if (params.valueX < 5) {
+                params.valueX++
                 reloadScene()
             }
             break
 
 
         case 'x':
-            if (valueX > 1) {
-                valueX--
+            if (params.valueX > 1) {
+                params.valueX--
                 reloadScene()
             }
             break
@@ -489,7 +549,7 @@ function handleKeyDown(event) {
             }
             break
 
-
+*/
         // ----------------------------------------------------
         // Camera
         // ----------------------------------------------------
@@ -499,20 +559,11 @@ function handleKeyDown(event) {
             toggleCamera()
             break
 
-        case 'v':
-        case 'V':
-            changeCameraPosition();
-            break;
-
-        case '4':
-            active4views = !active4views;
-            break;
-
 
         // ----------------------------------------------------
         // Scenes
         // ----------------------------------------------------
-
+/*
         case '1':
             selectedScene = 1
             reloadScene()
@@ -523,7 +574,7 @@ function handleKeyDown(event) {
             selectedScene = 2
             reloadScene()
             break
-
+*/
         
     }
 }
@@ -640,7 +691,15 @@ onUnmounted(() => {
 
 <style scoped>
 .three-container {
+    position: relative;
     width: 100%;
     height: 100%;
+}
+
+.three-container :deep(.lil-gui.root) {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
 }
 </style>
