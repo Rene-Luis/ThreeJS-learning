@@ -44,14 +44,14 @@ let cameraPerspective
 
 const params = {
     
-    selectedScene: 1,
+    selectedScene: "Cajas",
 
     valueX: 1,
     valueY: 1,
     valueZ: 1,
 
     cameraType: "Perspective",
-    positionNumber: 4,
+    position: "Vista 3D",
     active4views: false,    
 }
 
@@ -74,9 +74,9 @@ function createGUI() {
     
     const sceneFolder = gui.addFolder('Escena')
     const boxFolder = gui.addFolder('Cajas')
-    const cameraFolder = gui.addFolder('Cámara')
+    const cameraFolder = gui.addFolder('Proyecciones')
 
-    sceneFolder.add(params, 'selectedScene', 1, 2, 1).name("Escena seleccionada")
+    sceneFolder.add(params, 'selectedScene', ["Cajas", "Proyecciones"]).name("Escena seleccionada")
         .onChange(() => {
             reloadScene();
         });
@@ -101,7 +101,7 @@ function createGUI() {
         'Orthographic'
     ]).onChange(() => { toggleCamera(); });
 
-    cameraFolder.add(params, 'positionNumber', 1, 4, 1).name("Posición")
+    cameraFolder.add(params, 'position', ["Vista 3D", "Planta", "Alzado", "Perfil"]).name("Posición")
         .onChange(() => {
             changeCameraPosition();
         });
@@ -250,42 +250,42 @@ function createCamera() {
 
 
 function toggleCamera() {
-    if (params.cameraType == "Orthographic") {
-        activeCamera = orthographicCamera
-    } else {
-        activeCamera = perspectiveCamera
-    }
+    if(params.selectedScene == "Proyecciones"){
+        if (params.cameraType == "Orthographic") {
+            activeCamera = orthographicCamera
+        } else {
+            activeCamera = perspectiveCamera
+        }
 
-    activeCamera.position.set(lastPosition.x, lastPosition.y, lastPosition.z);
-    activeCamera.lookAt(0, 0, 0);
+        activeCamera.position.set(lastPosition.x, lastPosition.y, lastPosition.z);
+        activeCamera.lookAt(0, 0, 0);
+    }
 }
 
 
 function changeCameraPosition(){
-    switch (params.positionNumber) {
-        case 1:
-            lastPosition = new THREE.Vector3(6,0,0);
-            //positionNumber++;
-            break;
-        
-        case 2: 
-            lastPosition = new THREE.Vector3(0,6,0);
-            //positionNumber++;
-            break;
+    if(params.selectedScene == "Proyecciones"){
+        switch (params.position) {
+            case "Alzado":
+                lastPosition = new THREE.Vector3(6,0,0);
+                break;
+            
+            case "Planta": 
+                lastPosition = new THREE.Vector3(0,6,0);
+                break;
 
-        case 3: 
-            lastPosition = new THREE.Vector3(0,0,6);
-            //positionNumber++;
-            break;
+            case "Perfil": 
+                lastPosition = new THREE.Vector3(0,0,6);
+                break;
 
-        case 4:
-        default:
-            lastPosition = new THREE.Vector3(9,5,9);
-            //positionNumber = 0;
+            case "Vista 3D":
+            default:
+                lastPosition = new THREE.Vector3(9,5,9);
+        }
+
+        activeCamera.position.set(lastPosition.x, lastPosition.y, lastPosition.z);
+        activeCamera.lookAt(0, 0, 0);
     }
-
-    activeCamera.position.set(lastPosition.x, lastPosition.y, lastPosition.z);
-    activeCamera.lookAt(0, 0, 0);
 }
 
 
@@ -304,11 +304,11 @@ function loadScene() {
 
     switch (params.selectedScene) {
 
-        case 1:
+        case "Cajas":
             activeScene.add(createScene1( params.valueX, params.valueY, params.valueZ ))
             break
 
-        case 2:
+        case "Proyecciones":
             activeScene.add(createScene2())
             break
     }
@@ -345,7 +345,7 @@ function startRenderLoop() {
 
         animationId = requestAnimationFrame(render)
         
-        if(!params.active4views){
+        if(!params.active4views || params.selectedScene=="Cajas"){
 
             renderer.setScissorTest(false)
 
@@ -364,7 +364,7 @@ function startRenderLoop() {
                 activeCamera
             )
 
-        }else{
+        }else if (params.selectedScene == "Proyecciones"){
 
             const width = container.value.clientWidth
             const height = container.value.clientHeight
@@ -477,10 +477,12 @@ function startRenderLoop() {
 
 function registerEvents() {
 
+    /*
     window.addEventListener(
         'keydown',
         handleKeyDown
     )
+    */
 
     window.addEventListener(
         'resize',
@@ -493,91 +495,14 @@ function registerEvents() {
 // KEYBOARD
 // ============================================================
 
+/*
 function handleKeyDown(event) {
 
     switch (event.key) {
-
-        // ----------------------------------------------------
-        // Scene 1 dimensions
-        // ----------------------------------------------------
-
- /*
-        case 'X':
-            if (params.valueX < 5) {
-                params.valueX++
-                reloadScene()
-            }
-            break
-
-
-        case 'x':
-            if (params.valueX > 1) {
-                params.valueX--
-                reloadScene()
-            }
-            break
-
-
-        case 'Y':
-            if (valueY < 5) {
-                valueY++
-                reloadScene()
-            }
-            break
-
-
-        case 'y':
-            if (valueY > 1) {
-                valueY--
-                reloadScene()
-            }
-            break
-
-
-        case 'Z':
-            if (valueZ < 5) {
-                valueZ++
-                reloadScene()
-            }
-            break
-
-
-        case 'z':
-            if (valueZ > 1) {
-                valueZ--
-                reloadScene()
-            }
-            break
-
-*/
-        // ----------------------------------------------------
-        // Camera
-        // ----------------------------------------------------
-
-        case 'p':
-        case 'P':
-            toggleCamera()
-            break
-
-
-        // ----------------------------------------------------
-        // Scenes
-        // ----------------------------------------------------
-/*
-        case '1':
-            selectedScene = 1
-            reloadScene()
-            break
-
-
-        case '2':
-            selectedScene = 2
-            reloadScene()
-            break
-*/
         
     }
 }
+*/
 
 
 // ============================================================
@@ -666,10 +591,12 @@ onUnmounted(() => {
 
     cancelAnimationFrame(animationId)
 
+    /*
     window.removeEventListener(
         'keydown',
         handleKeyDown
     )
+    */
 
     window.removeEventListener(
         'resize',

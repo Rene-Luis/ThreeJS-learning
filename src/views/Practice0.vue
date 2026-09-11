@@ -1,180 +1,445 @@
 <script setup>
-    import { ref, onMounted, onUnmounted } from 'vue'
-    import * as THREE from 'three'
 
-    const container = ref(null);
+    /*
+        npm run lint
+        npm run build
+        npm run dev
+    */
 
-    let renderer = null;
-    let camera = null;
-    let animationId;
 
-    function resizeScene() {
-        if (!renderer || !camera || !container.value) {
-            return
-        };
+import { ref, onMounted, onUnmounted } from 'vue'
+import * as THREE from 'three'
+import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
+
+// ============================================================
+// VUE
+// ============================================================
+
+const container = ref(null)
+
+// ============================================================
+// THREE.JS - VARIABLES PRINCIPALES
+// ============================================================
+
+let renderer = null;
+let scene;
+let camera = null;
+let animationId;
+
+
+// ============================================================
+// GUI
+// ============================================================
+
+const params = {
+    sizeX: 1,
+    sizeY: 1,
+    sizeZ: 1,
+    wireframe: false,
+}
+
+let gui;
+
+function createGUI() {
+
+    gui = new GUI({
+        container: container.value
+    });
+
+    const sizeFolder = gui.addFolder('Dimensiones');
+
+    sizeFolder.add(params, 'sizeX', 1, 3, 0.1).name("x")
+    .onChange(() => { reloadScene(); });
+
+    sizeFolder.add(params, 'sizeY', 1, 3, 0.1).name("y")
+    .onChange(() => { reloadScene(); });
+
+    sizeFolder.add(params, 'sizeZ', 1, 3, 0.1).name("z")
+    .onChange(() => { reloadScene(); });
+
+    gui.add(params, "wireframe").onChange(() => { reloadScene(); });
+
+}
+
+// ============================================================
+// INICIALIZACIÓN
+// ============================================================
+
+onMounted(() => {
+
+    initRenderer();
+
+    createCamera();
+
+    loadScene();
+
+    createGUI();
+
+    registerEvents();
+
+    startRenderLoop();
+
+})
+
+// ============================================================
+// RENDERER
+// ============================================================
+
+function initRenderer() {
+
+    const width = container.value.clientWidth
+    const height = container.value.clientHeight
+
+    renderer = new THREE.WebGLRenderer({
+        antialias: true
+    })
+
+    renderer.setSize(width, height)
+
+    container.value.appendChild(renderer.domElement)
+}
+
+// ============================================================
+// CAMERA
+// ============================================================
+
+function createCamera() {
+
+    const width = container.value.clientWidth
+    const height = container.value.clientHeight
+
+    let aspect = width / height
+
+    camera = new THREE.PerspectiveCamera(
+        45,
+        aspect,
+        0.1,
+        1000
+    )    
+
+    camera.position.set(5, 3, 5)
+
+    camera.lookAt(0, 0, 0)
+
+}
+
+
+// ============================================================
+// LIGHTS
+// ============================================================
+
+function addLights(scene) {
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1)
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
+
+    directionalLight.position.set(0, 10, 0)
+
+    directionalLight.target.position.set(-5, 0, 0)
+
+    scene.add(ambientLight)
+    scene.add(directionalLight)
+    scene.add(directionalLight.target)
+}
+
+
+// ============================================================
+// SCENE
+// ============================================================
+
+function loadScene() {
+
+    scene = new THREE.Scene();
+
+    scene.background = new THREE.Color('white');
+
+    addLights(scene);
+
+    //----- EJES -----
+
+    // Colores
+    const lineMaterialX = new THREE.LineBasicMaterial({ color: 0xC11007 });
+    const lineMaterialY = new THREE.LineBasicMaterial({ color: 0x178236 });
+    const lineMaterialZ = new THREE.LineBasicMaterial({ color: 0x1447E6 });
+
+    // Coordenadas
+    const pointsX = [];
+    pointsX.push( new THREE.Vector3(-25, 0, 0) );
+    pointsX.push( new THREE.Vector3(25, 0, 0) );
+
+    const geometryX = new THREE.BufferGeometry().setFromPoints(pointsX);
+
+    const pointsY = [];
+    pointsY.push( new THREE.Vector3(0, -25, 0) );
+    pointsY.push( new THREE.Vector3(0, 25, 0) );
+
+    const geometryY = new THREE.BufferGeometry().setFromPoints(pointsY);
+
+    const pointsZ = [];
+    pointsZ.push( new THREE.Vector3(0, 0, -25) );
+    pointsZ.push( new THREE.Vector3(0, 0, 25) );
+    const geometryZ = new THREE.BufferGeometry().setFromPoints(pointsZ);
+
+    const lineX = new THREE.Line( geometryX, lineMaterialX );
+    const lineY = new THREE.Line( geometryY, lineMaterialY );
+    const lineZ = new THREE.Line( geometryZ, lineMaterialZ );
+
+    scene.add( lineX );
+    scene.add( lineY );
+    scene.add( lineZ );
+
+    // ----- -----
+
+    // ----- CUBO -----
+
+    // Geometría
+    const geometry = new THREE.BoxGeometry(params.sizeX, params.sizeY, params.sizeZ);
+
+    // Material
+    const material = new THREE.MeshPhongMaterial({ color: 0xEEEEEE });
+
+    material.wireframe = params.wireframe;
+
+    // Objeto
+    const cube = new THREE.Mesh(geometry, material);
+
+    scene.add(cube);
+
+    //----- -----
+
+    // ----- Triangulos -----
+
+    const positions = geometry.getAttribute('position')
+
+    const v0 = new THREE.Vector3()
+    const v1 = new THREE.Vector3()
+    const v8 = new THREE.Vector3()
+    const v10 = new THREE.Vector3()
+
+    v0.fromBufferAttribute(positions, 0)
+    v1.fromBufferAttribute(positions, 1)
+    v8.fromBufferAttribute(positions, 8)
+    v10.fromBufferAttribute(positions, 10)
+
+
+    const triangle1 = createTriangleFromVertices(
+        v0,
+        v1,
+        v10,
+        0xE7180B
+    )
+
+    const triangle2 = createTriangleFromVertices(
+        v1,
+        v8,
+        v10,
+        0x155DFC
+    )
+
+    scene.add(triangle1);
+    scene.add(triangle2);
+
+
+    /*
+    // 1. Triangulo Rojo
+    const geometryT1 = new THREE.BufferGeometry();
+
+    const verticesT1 = new Float32Array([
+        0.5, 0.5, -0.5,  
+        -0.5, 0.5, 0.5,  
+        0.5,  0.5, 0.5   
+    ]);
+
+    geometryT1.setAttribute(
+        'position',
+        new THREE.BufferAttribute(verticesT1, 3)
+    );
+
+    const materialT1 = new THREE.MeshBasicMaterial({
+        color: 0xE7180B,
+        side: THREE.DoubleSide
+    });
+
+    const triangle1 = new THREE.Mesh(geometryT1, materialT1);
+
+    scene.add(triangle1);
+
+    // 2. Triangulo Azul
+    const geometryT2 = new THREE.BufferGeometry();
+
+    const verticesT2 = new Float32Array([
+        0.5, 0.5, -0.5,  
+        -0.5, 0.5, -0.5,  
+        -0.5,  0.5, 0.5   
+    ]);
+
+    geometryT2.setAttribute(
+        'position',
+        new THREE.BufferAttribute(verticesT2, 3)
+    );
+
+    const materialT2 = new THREE.MeshBasicMaterial({
+        color: 0x155DFC,
+        side: THREE.DoubleSide
+    });
+
+    const triangle2 = new THREE.Mesh(geometryT2, materialT2);
+
+    scene.add(triangle2);
+    */
+}
+
+function createTriangleFromVertices(v1, v2, v3, color) {
+
+    const vertices = new Float32Array([
+        v1.x, v1.y, v1.z,
+        v2.x, v2.y, v2.z,
+        v3.x, v3.y, v3.z
+    ])
+
+    const geometry = new THREE.BufferGeometry()
+
+    geometry.setAttribute(
+        'position',
+        new THREE.BufferAttribute(vertices, 3)
+    )
+
+    const material = new THREE.MeshBasicMaterial({
+        color: color,
+        side: THREE.DoubleSide
+    })
+
+    return new THREE.Mesh(
+        geometry,
+        material
+    )
+}
+
+// ============================================================
+// RENDER LOOP
+// ============================================================
+
+function startRenderLoop() { 
+    
+    function render() {
+        
+        animationId = requestAnimationFrame(render)
 
         const width = container.value.clientWidth;
         const height = container.value.clientHeight;
 
-        renderer.setSize(width, height);
+        renderer.setViewport(
+            0,
+            0,
+            width,
+            height
+        );
 
-        camera.aspect = width / height;
-        camera.updateProjectionMatrix();
+        renderer.render(
+            scene,
+            camera
+        );
     }
 
-    onMounted(() => {
-        // Escena
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color('white');
+    render()
+}
 
-        const width = container.value.clientWidth;
-        const height = container.value.clientHeight;
 
-        // Cámara
-        camera = new THREE.PerspectiveCamera(
-            45,
-            container.value.clientWidth / container.value.clientHeight,
-            0.1,
-            1000
-        );
+// ============================================================
+// EVENTS
+// ============================================================
 
-        camera.position.x = 5;
-        camera.position.y = 3;
-        camera.position.z = 5;
+function registerEvents() {
 
-        camera.lookAt(0, 0, 0);
+    window.addEventListener(
+        'resize',
+        handleResize
+    )
+}
 
-        window.addEventListener('resize', resizeScene)
 
-        // Renderer
-        renderer = new THREE.WebGLRenderer({
-            antialias: true
-        });
+// ============================================================
+// RELOAD SCENE
+// ============================================================
 
-        renderer.setSize(width, height);
-        container.value.appendChild(renderer.domElement);
+function reloadScene() {
 
-        //----- EJES -----
+    disposeScene(scene)
+    loadScene()
+}
 
-        // Colores
-        const lineMaterialX = new THREE.LineBasicMaterial({ color: 0xC11007 });
-        const lineMaterialY = new THREE.LineBasicMaterial({ color: 0x178236 });
-        const lineMaterialZ = new THREE.LineBasicMaterial({ color: 0x1447E6 });
+// ============================================================
+// WINDOW RESIZE
+// ============================================================
 
-        // Coordenadas
-        const pointsX = [];
-        pointsX.push( new THREE.Vector3(-25, 0, 0) );
-        pointsX.push( new THREE.Vector3(25, 0, 0) );
+function handleResize() {
 
-        const geometryX = new THREE.BufferGeometry().setFromPoints(pointsX);
+    const width = container.value.clientWidth
+    const height = container.value.clientHeight
 
-        const pointsY = [];
-        pointsY.push( new THREE.Vector3(0, -25, 0) );
-        pointsY.push( new THREE.Vector3(0, 25, 0) );
+    const aspect = width / height
 
-        const geometryY = new THREE.BufferGeometry().setFromPoints(pointsY);
+    renderer.setSize(
+        width,
+        height
+    )
 
-        const pointsZ = [];
-        pointsZ.push( new THREE.Vector3(0, 0, -25) );
-        pointsZ.push( new THREE.Vector3(0, 0, 25) );
-        const geometryZ = new THREE.BufferGeometry().setFromPoints(pointsZ);
+    camera.aspect = aspect
 
-        const lineX = new THREE.Line( geometryX, lineMaterialX );
-        const lineY = new THREE.Line( geometryY, lineMaterialY );
-        const lineZ = new THREE.Line( geometryZ, lineMaterialZ );
+    camera.updateProjectionMatrix()
+}
 
-        scene.add( lineX );
-        scene.add( lineY );
-        scene.add( lineZ );
 
-        // ----- -----
+// ============================================================
+// MEMORY CLEANUP
+// ============================================================
 
-        // ----- CUBO -----
+function disposeScene(scene) {
 
-        // Geometría
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
+    if (!scene) {
+        return
+    }
 
-        // Material
-        const material = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    scene.traverse((object) => {
 
-        material.wireframe = true;
-
-        // Objeto
-        const cube = new THREE.Mesh(geometry, material);
-
-        scene.add(cube);
-
-        //----- -----
-
-        // ----- Triangulos -----
-
-        // 1. Triangulo Rojo
-        const geometryT1 = new THREE.BufferGeometry();
-
-        const verticesT1 = new Float32Array([
-            0.5, 0.5, -0.5,  
-            -0.5, 0.5, 0.5,  
-            0.5,  0.5, 0.5   
-        ]);
-
-        geometryT1.setAttribute(
-            'position',
-            new THREE.BufferAttribute(verticesT1, 3)
-        );
-
-        const materialT1 = new THREE.MeshBasicMaterial({
-            color: 0xE7180B,
-            side: THREE.DoubleSide
-        });
-
-        const triangle1 = new THREE.Mesh(geometryT1, materialT1);
-
-        scene.add(triangle1);
-
-        // 2. Triangulo Azul
-        const geometryT2 = new THREE.BufferGeometry();
-
-        const verticesT2 = new Float32Array([
-            0.5, 0.5, -0.5,  
-            -0.5, 0.5, -0.5,  
-            -0.5,  0.5, 0.5   
-        ]);
-
-        geometryT2.setAttribute(
-            'position',
-            new THREE.BufferAttribute(verticesT2, 3)
-        );
-
-        const materialT2 = new THREE.MeshBasicMaterial({
-            color: 0x155DFC,
-            side: THREE.DoubleSide
-        });
-
-        const triangle2 = new THREE.Mesh(geometryT2, materialT2);
-
-        scene.add(triangle2);
-
-        //----- -----
-
-        // ----- Rendering Loop -----
-        function loop() {
-            animationId = requestAnimationFrame(loop)
-
-            //cube.rotation.x += 0.01
-            //cube.rotation.y += 0.01
-
-            renderer.render(scene, camera)
+        if (object.geometry) {
+            object.geometry.dispose()
         }
 
-        loop();
+        if (object.material) {
 
-    })
+            if (Array.isArray(object.material)) {
 
-    onUnmounted(() => {
-        cancelAnimationFrame(animationId)
-        window.removeEventListener('resize', resizeScene)
-        renderer?.dispose()
+                object.material.forEach(
+                    material => material.dispose()
+                )
+
+            } else {
+
+                object.material.dispose()
+            }
+        }
     })
+}
+
+// ============================================================
+// VUE CLEANUP
+// ============================================================
+
+onUnmounted(() => {
+
+    cancelAnimationFrame(animationId)
+
+    window.removeEventListener(
+        'resize',
+        handleResize
+    )
+
+    disposeScene(scene)
+
+    renderer?.dispose()
+})
 </script>
 
 <template>
@@ -185,8 +450,16 @@
 </template>
 
 <style scoped>
-    .three-container {
+.three-container {
+    position: relative;
     width: 100%;
-    height: 100vh;
-    }
+    height: 100%;
+}
+
+.three-container :deep(.lil-gui.root) {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+}
 </style>
