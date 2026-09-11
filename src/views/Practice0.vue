@@ -10,6 +10,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import * as THREE from 'three'
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
 // ============================================================
 // VUE
@@ -24,6 +25,7 @@ const container = ref(null)
 let renderer = null;
 let scene;
 let camera = null;
+let controls = null
 let animationId;
 
 
@@ -36,6 +38,7 @@ const params = {
     sizeY: 1,
     sizeZ: 1,
     wireframe: false,
+    triangles: true,
 }
 
 let gui;
@@ -59,6 +62,8 @@ function createGUI() {
 
     gui.add(params, "wireframe").onChange(() => { reloadScene(); });
 
+    gui.add(params, "triangles").name("Triángulos").onChange(() => { reloadScene(); });
+
 }
 
 // ============================================================
@@ -70,6 +75,8 @@ onMounted(() => {
     initRenderer();
 
     createCamera();
+
+    createControls();
 
     loadScene();
 
@@ -121,6 +128,25 @@ function createCamera() {
 
     camera.lookAt(0, 0, 0)
 
+}
+
+function createControls() {
+
+    controls = new OrbitControls(
+        camera,
+        renderer.domElement
+    )
+
+    controls.target.set(0, 0, 0)
+
+    controls.enableRotate = true
+    controls.enableZoom = false
+    controls.enablePan = false
+
+    controls.enableDamping = true
+    controls.dampingFactor = 0.05
+
+    controls.update()
 }
 
 
@@ -209,85 +235,39 @@ function loadScene() {
     //----- -----
 
     // ----- Triangulos -----
+    if(params.triangles){
 
-    const positions = geometry.getAttribute('position')
+        const positions = geometry.getAttribute('position')
 
-    const v0 = new THREE.Vector3()
-    const v1 = new THREE.Vector3()
-    const v8 = new THREE.Vector3()
-    const v10 = new THREE.Vector3()
+        const v0 = new THREE.Vector3()
+        const v1 = new THREE.Vector3()
+        const v8 = new THREE.Vector3()
+        const v10 = new THREE.Vector3()
 
-    v0.fromBufferAttribute(positions, 0)
-    v1.fromBufferAttribute(positions, 1)
-    v8.fromBufferAttribute(positions, 8)
-    v10.fromBufferAttribute(positions, 10)
-
-
-    const triangle1 = createTriangleFromVertices(
-        v0,
-        v1,
-        v10,
-        0xE7180B
-    )
-
-    const triangle2 = createTriangleFromVertices(
-        v1,
-        v8,
-        v10,
-        0x155DFC
-    )
-
-    scene.add(triangle1);
-    scene.add(triangle2);
+        v0.fromBufferAttribute(positions, 0)
+        v1.fromBufferAttribute(positions, 1)
+        v8.fromBufferAttribute(positions, 8)
+        v10.fromBufferAttribute(positions, 10)
 
 
-    /*
-    // 1. Triangulo Rojo
-    const geometryT1 = new THREE.BufferGeometry();
+        const triangle1 = createTriangleFromVertices(
+            v0,
+            v1,
+            v10,
+            0xE7180B
+        )
 
-    const verticesT1 = new Float32Array([
-        0.5, 0.5, -0.5,  
-        -0.5, 0.5, 0.5,  
-        0.5,  0.5, 0.5   
-    ]);
+        const triangle2 = createTriangleFromVertices(
+            v1,
+            v8,
+            v10,
+            0x155DFC
+        )
 
-    geometryT1.setAttribute(
-        'position',
-        new THREE.BufferAttribute(verticesT1, 3)
-    );
+        scene.add(triangle1);
+        scene.add(triangle2);
+    }
 
-    const materialT1 = new THREE.MeshBasicMaterial({
-        color: 0xE7180B,
-        side: THREE.DoubleSide
-    });
-
-    const triangle1 = new THREE.Mesh(geometryT1, materialT1);
-
-    scene.add(triangle1);
-
-    // 2. Triangulo Azul
-    const geometryT2 = new THREE.BufferGeometry();
-
-    const verticesT2 = new Float32Array([
-        0.5, 0.5, -0.5,  
-        -0.5, 0.5, -0.5,  
-        -0.5,  0.5, 0.5   
-    ]);
-
-    geometryT2.setAttribute(
-        'position',
-        new THREE.BufferAttribute(verticesT2, 3)
-    );
-
-    const materialT2 = new THREE.MeshBasicMaterial({
-        color: 0x155DFC,
-        side: THREE.DoubleSide
-    });
-
-    const triangle2 = new THREE.Mesh(geometryT2, materialT2);
-
-    scene.add(triangle2);
-    */
 }
 
 function createTriangleFromVertices(v1, v2, v3, color) {
@@ -325,6 +305,8 @@ function startRenderLoop() {
     function render() {
         
         animationId = requestAnimationFrame(render)
+
+        controls.update();
 
         const width = container.value.clientWidth;
         const height = container.value.clientHeight;
