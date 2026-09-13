@@ -34,11 +34,13 @@ let animationId;
 // ============================================================
 
 const params = {
+    axis: true,
     sizeX: 1,
     sizeY: 1,
     sizeZ: 1,
     wireframe: false,
     triangles: true,
+    
 }
 
 let gui;
@@ -49,7 +51,10 @@ function createGUI() {
         container: container.value
     });
 
-    const sizeFolder = gui.addFolder('Dimensiones');
+    gui.add(params, "axis").name("Ejes")
+    .onChange(() => { reloadScene(); });
+
+    const sizeFolder = gui.addFolder('Dimensiones');    
 
     sizeFolder.add(params, 'sizeX', 1, 3, 0.1).name("x")
     .onChange(() => { reloadScene(); });
@@ -183,37 +188,39 @@ function loadScene() {
     addLights(scene);
 
     //----- EJES -----
+    if(params.axis){
 
-    // Colores
-    const lineMaterialX = new THREE.LineBasicMaterial({ color: 0xC11007 });
-    const lineMaterialY = new THREE.LineBasicMaterial({ color: 0x178236 });
-    const lineMaterialZ = new THREE.LineBasicMaterial({ color: 0x1447E6 });
+        // Colores
+        const lineMaterialX = new THREE.LineBasicMaterial({ color: 0xC11007 });
+        const lineMaterialY = new THREE.LineBasicMaterial({ color: 0x178236 });
+        const lineMaterialZ = new THREE.LineBasicMaterial({ color: 0x1447E6 });
 
-    // Coordenadas
-    const pointsX = [];
-    pointsX.push( new THREE.Vector3(-25, 0, 0) );
-    pointsX.push( new THREE.Vector3(25, 0, 0) );
+        // Coordenadas
+        const pointsX = [];
+        pointsX.push( new THREE.Vector3(-25, 0, 0) );
+        pointsX.push( new THREE.Vector3(25, 0, 0) );
 
-    const geometryX = new THREE.BufferGeometry().setFromPoints(pointsX);
+        const geometryX = new THREE.BufferGeometry().setFromPoints(pointsX);
 
-    const pointsY = [];
-    pointsY.push( new THREE.Vector3(0, -25, 0) );
-    pointsY.push( new THREE.Vector3(0, 25, 0) );
+        const pointsY = [];
+        pointsY.push( new THREE.Vector3(0, -25, 0) );
+        pointsY.push( new THREE.Vector3(0, 25, 0) );
 
-    const geometryY = new THREE.BufferGeometry().setFromPoints(pointsY);
+        const geometryY = new THREE.BufferGeometry().setFromPoints(pointsY);
 
-    const pointsZ = [];
-    pointsZ.push( new THREE.Vector3(0, 0, -25) );
-    pointsZ.push( new THREE.Vector3(0, 0, 25) );
-    const geometryZ = new THREE.BufferGeometry().setFromPoints(pointsZ);
+        const pointsZ = [];
+        pointsZ.push( new THREE.Vector3(0, 0, -25) );
+        pointsZ.push( new THREE.Vector3(0, 0, 25) );
+        const geometryZ = new THREE.BufferGeometry().setFromPoints(pointsZ);
 
-    const lineX = new THREE.Line( geometryX, lineMaterialX );
-    const lineY = new THREE.Line( geometryY, lineMaterialY );
-    const lineZ = new THREE.Line( geometryZ, lineMaterialZ );
+        const lineX = new THREE.Line( geometryX, lineMaterialX );
+        const lineY = new THREE.Line( geometryY, lineMaterialY );
+        const lineZ = new THREE.Line( geometryZ, lineMaterialZ );
 
-    scene.add( lineX );
-    scene.add( lineY );
-    scene.add( lineZ );
+        scene.add( lineX );
+        scene.add( lineY );
+        scene.add( lineZ );
+    }
 
     // ----- -----
 
@@ -223,7 +230,12 @@ function loadScene() {
     const geometry = new THREE.BoxGeometry(params.sizeX, params.sizeY, params.sizeZ);
 
     // Material
-    const material = new THREE.MeshPhongMaterial({ color: 0xEEEEEE });
+    let material = new THREE.MeshPhongMaterial({ color: 0xEEEEEE });
+
+    if (params.wireframe)
+    {
+        material = new THREE.MeshNormalMaterial();
+    }
 
     material.wireframe = params.wireframe;
 
