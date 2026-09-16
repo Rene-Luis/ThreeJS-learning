@@ -44,14 +44,14 @@ let cameraPerspective
 
 const params = {
     
-    selectedScene: "Cajas",
+    selectedScene: "Boxes",
 
     valueX: 1,
     valueY: 1,
     valueZ: 1,
 
     cameraType: "Perspective",
-    position: "Vista 3D",
+    position: "3D",
     active4views: false,    
 }
 
@@ -72,41 +72,41 @@ function createGUI() {
     });
 
     
-    const sceneFolder = gui.addFolder('Escena')
-    const boxFolder = gui.addFolder('Cajas')
-    const cameraFolder = gui.addFolder('Proyecciones')
+    const sceneFolder = gui.addFolder('Scene')
+    const boxFolder = gui.addFolder('Boxes')
+    const cameraFolder = gui.addFolder('Proyections')
 
-    sceneFolder.add(params, 'selectedScene', ["Cajas", "Proyecciones"]).name("Escena seleccionada")
+    sceneFolder.add(params, 'selectedScene', ["Boxes", "Proyections"]).name("Selected Scene")
         .onChange(() => {
             reloadScene();
         });
 
-    boxFolder.add(params, 'valueX', 1, 5, 1).name("En el eje X")
+    boxFolder.add(params, 'valueX', 1, 4, 1).name("X-axis")
         .onChange(() => {
             reloadScene();
         });
 
-    boxFolder.add(params, 'valueY', 1, 5, 1).name("En el eje Y")
+    boxFolder.add(params, 'valueY', 1, 4, 1).name("Y-axis")
         .onChange(() => {
             reloadScene();
         });
 
-    boxFolder.add(params, 'valueZ', 1, 5, 1).name("En el eje Z")
+    boxFolder.add(params, 'valueZ', 1, 4, 1).name("Z-axis")
         .onChange(() => {
             reloadScene();
         });
 
-    gui.add(params, 'cameraType', [
+    cameraFolder.add(params, 'cameraType', [
         'Perspective',
         'Orthographic'
-    ]).onChange(() => { toggleCamera(); });
+    ]).name("Camera type").onChange(() => { toggleCamera(); });
 
-    cameraFolder.add(params, 'position', ["Vista 3D", "Planta", "Alzado", "Perfil"]).name("Posición")
+    cameraFolder.add(params, 'position', ["3D", "Floor", "Elevation", "Section"]).name("Position")
         .onChange(() => {
             changeCameraPosition();
         });
 
-    cameraFolder.add(params, 'active4views').name("4 vistas")
+    cameraFolder.add(params, 'active4views').name("4 viewports")
 
 }
 
@@ -181,8 +181,8 @@ function createCamera() {
         1000
     )    
 
-    perspectiveCamera.position.set(9, 5, 9)
-    orthographicCamera.position.set(9, 5, 9)
+    perspectiveCamera.position.set(10, 5, 10)
+    orthographicCamera.position.set(10, 5, 10)
 
     perspectiveCamera.lookAt(0, 0, 0)
     orthographicCamera.lookAt(0, 0, 0)
@@ -250,7 +250,7 @@ function createCamera() {
 
 
 function toggleCamera() {
-    if(params.selectedScene == "Proyecciones"){
+    if(params.selectedScene == "Proyections"){
         if (params.cameraType == "Orthographic") {
             activeCamera = orthographicCamera
         } else {
@@ -264,21 +264,21 @@ function toggleCamera() {
 
 
 function changeCameraPosition(){
-    if(params.selectedScene == "Proyecciones"){
+    if(params.selectedScene == "Proyections"){
         switch (params.position) {
-            case "Alzado":
+            case "Elevation":
                 lastPosition = new THREE.Vector3(6,0,0);
                 break;
             
-            case "Planta": 
+            case "Floor": 
                 lastPosition = new THREE.Vector3(0,6,0);
                 break;
 
-            case "Perfil": 
+            case "Section": 
                 lastPosition = new THREE.Vector3(0,0,6);
                 break;
 
-            case "Vista 3D":
+            case "3D":
             default:
                 lastPosition = new THREE.Vector3(9,5,9);
         }
@@ -304,11 +304,11 @@ function loadScene() {
 
     switch (params.selectedScene) {
 
-        case "Cajas":
+        case "Boxes":
             activeScene.add(createScene1( params.valueX, params.valueY, params.valueZ ))
             break
 
-        case "Proyecciones":
+        case "Proyections":
             activeScene.add(createScene2())
             break
     }
@@ -345,7 +345,7 @@ function startRenderLoop() {
 
         animationId = requestAnimationFrame(render)
         
-        if(!params.active4views || params.selectedScene=="Cajas"){
+        if(!params.active4views || params.selectedScene=="Boxes"){
 
             renderer.setScissorTest(false)
 
@@ -364,7 +364,7 @@ function startRenderLoop() {
                 activeCamera
             )
 
-        }else if (params.selectedScene == "Proyecciones"){
+        }else if (params.selectedScene == "Proyections"){
 
             const width = container.value.clientWidth
             const height = container.value.clientHeight
@@ -477,32 +477,11 @@ function startRenderLoop() {
 
 function registerEvents() {
 
-    /*
-    window.addEventListener(
-        'keydown',
-        handleKeyDown
-    )
-    */
-
     window.addEventListener(
         'resize',
         handleResize
     )
 }
-
-
-// ============================================================
-// KEYBOARD
-// ============================================================
-
-/*
-function handleKeyDown(event) {
-
-    switch (event.key) {
-        
-    }
-}
-*/
 
 
 // ============================================================
@@ -589,23 +568,16 @@ function disposeScene(scene) {
 
 onUnmounted(() => {
 
-    cancelAnimationFrame(animationId)
-
-    /*
-    window.removeEventListener(
-        'keydown',
-        handleKeyDown
-    )
-    */
+    cancelAnimationFrame(animationId);
 
     window.removeEventListener(
         'resize',
         handleResize
-    )
+    );
 
-    disposeScene(activeScene)
+    disposeScene(activeScene);
 
-    renderer?.dispose()
+    renderer?.dispose();
 })
 
 </script>

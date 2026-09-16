@@ -8,12 +8,12 @@ import Footer from './components/my-footer.vue'
   <div class="app">
     <header class="navbar">
       <div class="navbar__brand">
-        IGV - Visualizaciones de Prácticas
+        IGV - Practice Views
       </div>
 
       <nav class="navbar__links">
-        <RouterLink to="/">Práctica 0</RouterLink>
-        <RouterLink to="/P1">Práctica 1</RouterLink>
+        <RouterLink to="/">Practice 0</RouterLink>
+        <RouterLink to="/P1">Practice 1</RouterLink>
       </nav>
     </header>
 

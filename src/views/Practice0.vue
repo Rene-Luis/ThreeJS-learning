@@ -57,10 +57,10 @@ function createGUI() {
         container: container.value
     });
 
-    gui.add(params, "axis").name("Ejes")
+    gui.add(params, "axis").name("Axis")
     .onChange(() => { reloadScene(); });
 
-    const sizeFolder = gui.addFolder('Dimensiones');    
+    const sizeFolder = gui.addFolder('Cube size ');    
 
     sizeFolder.add(params, 'sizeX', 0.5, 3, 0.1).name("x")
     .onChange(() => { reloadScene(); });
@@ -73,7 +73,7 @@ function createGUI() {
 
     gui.add(params, "wireframe").onChange(() => { reloadScene(); });
 
-    gui.add(params, "triangles").name("Triángulos").onChange(() => { reloadScene(); });
+    gui.add(params, "triangles").name("Triangles").onChange(() => { reloadScene(); });
 
 }
 
