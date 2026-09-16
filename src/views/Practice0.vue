@@ -12,6 +12,11 @@ import * as THREE from 'three'
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
+import {
+    CSS2DRenderer,
+    CSS2DObject
+} from 'three/addons/renderers/CSS2DRenderer.js'
+
 // ============================================================
 // VUE
 // ============================================================
@@ -23,6 +28,7 @@ const container = ref(null)
 // ============================================================
 
 let renderer = null;
+let labelRenderer;
 let scene;
 let camera = null;
 let controls = null
@@ -56,13 +62,13 @@ function createGUI() {
 
     const sizeFolder = gui.addFolder('Dimensiones');    
 
-    sizeFolder.add(params, 'sizeX', 1, 3, 0.1).name("x")
+    sizeFolder.add(params, 'sizeX', 0.5, 3, 0.1).name("x")
     .onChange(() => { reloadScene(); });
 
-    sizeFolder.add(params, 'sizeY', 1, 3, 0.1).name("y")
+    sizeFolder.add(params, 'sizeY', 0.5, 3, 0.1).name("y")
     .onChange(() => { reloadScene(); });
 
-    sizeFolder.add(params, 'sizeZ', 1, 3, 0.1).name("z")
+    sizeFolder.add(params, 'sizeZ', 0.5, 3, 0.1).name("z")
     .onChange(() => { reloadScene(); });
 
     gui.add(params, "wireframe").onChange(() => { reloadScene(); });
@@ -99,16 +105,30 @@ onMounted(() => {
 
 function initRenderer() {
 
-    const width = container.value.clientWidth
-    const height = container.value.clientHeight
+    const width = container.value.clientWidth;
+    const height = container.value.clientHeight;
 
     renderer = new THREE.WebGLRenderer({
         antialias: true
     })
 
-    renderer.setSize(width, height)
+    renderer.setSize(width, height);
 
-    container.value.appendChild(renderer.domElement)
+    container.value.appendChild(renderer.domElement);
+
+     // Renderer para etiquetas
+    labelRenderer = new CSS2DRenderer();
+
+    labelRenderer.setSize(width, height);
+
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0';
+    labelRenderer.domElement.style.left = '0';
+    labelRenderer.domElement.style.pointerEvents = 'none';
+
+    container.value.appendChild(
+        labelRenderer.domElement
+    )
 }
 
 // ============================================================
@@ -241,25 +261,23 @@ function loadScene() {
 
     // Objeto
     const cube = new THREE.Mesh(geometry, material);
-
     scene.add(cube);
 
-    //----- -----
+
+    const positions = geometry.getAttribute('position');
 
     // ----- Triangulos -----
     if(params.triangles){
 
-        const positions = geometry.getAttribute('position')
+        const v0 = new THREE.Vector3();
+        const v1 = new THREE.Vector3();
+        const v8 = new THREE.Vector3();
+        const v10 = new THREE.Vector3();
 
-        const v0 = new THREE.Vector3()
-        const v1 = new THREE.Vector3()
-        const v8 = new THREE.Vector3()
-        const v10 = new THREE.Vector3()
-
-        v0.fromBufferAttribute(positions, 0)
-        v1.fromBufferAttribute(positions, 1)
-        v8.fromBufferAttribute(positions, 8)
-        v10.fromBufferAttribute(positions, 10)
+        v0.fromBufferAttribute(positions, 0);
+        v1.fromBufferAttribute(positions, 1);
+        v8.fromBufferAttribute(positions, 8);
+        v10.fromBufferAttribute(positions, 10);
 
 
         const triangle1 = createTriangleFromVertices(
@@ -267,18 +285,26 @@ function loadScene() {
             v1,
             v10,
             0xE7180B
-        )
+        );
 
         const triangle2 = createTriangleFromVertices(
             v1,
             v8,
             v10,
             0x155DFC
-        )
+        );
 
         scene.add(triangle1);
         scene.add(triangle2);
     }
+
+
+    // ----- Label -----
+    const vertex = new THREE.Vector3();
+    vertex.fromBufferAttribute(positions, 0);
+    const vertexLabel = createVertexLabel(vertex);
+
+    cube.add(vertexLabel);
 
 }
 
@@ -334,6 +360,11 @@ function startRenderLoop() {
             scene,
             camera
         );
+
+        labelRenderer.render(
+            scene,
+            camera
+        )
     }
 
     render()
@@ -359,8 +390,27 @@ function registerEvents() {
 
 function reloadScene() {
 
-    disposeScene(scene)
-    loadScene()
+    disposeScene(scene);
+    loadScene();
+}
+
+// ============================================================
+// TEXT LABEL
+// ============================================================
+
+function createVertexLabel(position) {
+
+    const div = document.createElement('div')
+
+    div.className = 'vertex-label'
+
+    div.textContent = `(${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`
+
+    const label = new CSS2DObject(div)
+
+    label.position.copy(position)
+
+    return label
 }
 
 // ============================================================
@@ -372,16 +422,15 @@ function handleResize() {
     const width = container.value.clientWidth
     const height = container.value.clientHeight
 
-    const aspect = width / height
+    const aspect = width / height;
 
-    renderer.setSize(
-        width,
-        height
-    )
+    renderer.setSize(width, height);
 
-    camera.aspect = aspect
+    labelRenderer.setSize(width, height);
 
-    camera.updateProjectionMatrix()
+    camera.aspect = aspect;
+
+    camera.updateProjectionMatrix();
 }
 
 
@@ -396,6 +445,11 @@ function disposeScene(scene) {
     }
 
     scene.traverse((object) => {
+
+
+         if (object.isCSS2DObject) {
+            object.element.remove()
+        }
 
         if (object.geometry) {
             object.geometry.dispose()
