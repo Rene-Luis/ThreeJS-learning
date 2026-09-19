@@ -6,6 +6,7 @@ function drawObjects(){
 
   const boxGeometry = new THREE.BoxGeometry(1, 2, 4);
   const boxMaterial = new THREE.MeshPhongMaterial({color: 0x58D58E});
+  boxMaterial.side = THREE.DoubleSide;
   const box = new THREE.Mesh(boxGeometry, boxMaterial);
 
   const radiusTop = 0.2;
@@ -14,6 +15,7 @@ function drawObjects(){
   const radialSegments = 12;
   const cylinderGeometry = new THREE.CylinderGeometry( radiusTop, radiusBottom, height, radialSegments );
   const cylinderMaterial = new THREE.MeshPhongMaterial({color: 0x0E88E5});
+  cylinderMaterial.side = THREE.DoubleSide;
 
   const cylinder1 = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
   const cylinder2 = new THREE.Mesh(cylinderGeometry, cylinderMaterial);

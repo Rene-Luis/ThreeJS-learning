@@ -31,7 +31,7 @@ let renderer = null;
 let labelRenderer;
 let scene;
 let camera = null;
-let controls = null
+let controls = null;
 let animationId;
 
 

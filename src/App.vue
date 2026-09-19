@@ -14,6 +14,7 @@ import Footer from './components/my-footer.vue'
       <nav class="navbar__links">
         <RouterLink to="/">Practice 0</RouterLink>
         <RouterLink to="/P1">Practice 1</RouterLink>
+        <!--<RouterLink to="/P2">Practice 2</RouterLink>-->
       </nav>
     </header>
 

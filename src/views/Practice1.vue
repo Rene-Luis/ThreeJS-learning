@@ -63,7 +63,9 @@ let lastPosition = new THREE.Vector3(9,5,9);
 // GUI
 // ============================================================
 
-let gui
+let gui;
+let sceneControlsFolder;
+let opticControlFolder;
 
 function createGUI() {
 
@@ -73,41 +75,120 @@ function createGUI() {
 
     
     const sceneFolder = gui.addFolder('Scene')
-    const boxFolder = gui.addFolder('Boxes')
-    const cameraFolder = gui.addFolder('Proyections')
 
-    sceneFolder.add(params, 'selectedScene', ["Boxes", "Proyections"]).name("Selected Scene")
+    sceneFolder.add(params, 'selectedScene', ["Boxes", "Projections"]).name("Selected Scene")
         .onChange(() => {
             reloadScene();
-        });
+            rebuildSceneControls();
+        });    
 
-    boxFolder.add(params, 'valueX', 1, 4, 1).name("X-axis")
-        .onChange(() => {
-            reloadScene();
-        });
+    rebuildSceneControls();
+}
 
-    boxFolder.add(params, 'valueY', 1, 4, 1).name("Y-axis")
-        .onChange(() => {
-            reloadScene();
-        });
+function rebuildSceneControls() {
 
-    boxFolder.add(params, 'valueZ', 1, 4, 1).name("Z-axis")
-        .onChange(() => {
-            reloadScene();
-        });
+    // Elimina la carpeta anterior si existe
+    if (sceneControlsFolder) {
+        sceneControlsFolder.destroy();
+        sceneControlsFolder = null;
+        opticControlFolder = null
+    }
 
-    cameraFolder.add(params, 'cameraType', [
-        'Perspective',
-        'Orthographic'
-    ]).name("Camera type").onChange(() => { toggleCamera(); });
 
-    cameraFolder.add(params, 'position', ["3D", "Floor", "Elevation", "Section"]).name("Position")
-        .onChange(() => {
-            changeCameraPosition();
-        });
+    // Crea una nueva según la escena seleccionada
+    switch (params.selectedScene) {
 
-    cameraFolder.add(params, 'active4views').name("4 viewports")
+        case 'Boxes':
 
+            sceneControlsFolder = gui.addFolder('Boxes')
+
+            sceneControlsFolder.add(params, 'valueX', 1, 4, 1).name("X-axis")
+                .onChange(() => {
+                    reloadScene();
+                });
+
+            sceneControlsFolder.add(params, 'valueY', 1, 4, 1).name("Y-axis")
+                .onChange(() => {
+                    reloadScene();
+                });
+
+            sceneControlsFolder.add(params, 'valueZ', 1, 4, 1).name("Z-axis")
+                .onChange(() => {
+                    reloadScene();
+                });
+
+            break;
+
+
+        case 'Projections':
+
+            sceneControlsFolder = gui.addFolder('Projection Controls')
+
+            sceneControlsFolder.add(params, 'cameraType', [
+                'Perspective',
+                'Orthographic'
+            ]).name("Camera type").onChange(() => { 
+                toggleCamera();
+                createOpticsControls();
+            });
+
+            sceneControlsFolder.add(params, 'position', ["3D", "Floor", "Elevation", "Section"]).name("View")
+                .onChange(() => {
+                    changeCameraPosition();
+                });
+
+            sceneControlsFolder.add(params, 'active4views').name("4 viewports")
+            .onChange(() => {
+                    createOpticsControls();
+                });
+
+            createOpticsControls();
+
+            break;
+    }
+}
+
+function createOpticsControls(){
+
+    if (opticControlFolder) {
+        opticControlFolder.destroy()
+        opticControlFolder = null
+    }
+
+    if(!params.active4views){
+
+        opticControlFolder = sceneControlsFolder.addFolder('Optics')
+
+        if(params.cameraType == 'Perspective') {
+            
+            opticControlFolder.add( activeCamera, 'fov', 10, 180, 1 )
+            .onChange(() => {
+                activeCamera.updateProjectionMatrix()
+            });
+        
+        }else if (params.cameraType == 'Orthographic'){
+            
+            opticControlFolder.add( activeCamera, 'zoom', 0.01, 3, 0.01 ).listen()
+            .onChange(() => {
+                activeCamera.updateProjectionMatrix()
+            });
+        }
+
+        opticControlFolder.add(activeCamera, 'near', 0.1, 30, 0.1).onChange(() => {
+                if(activeCamera.near >= activeCamera.far)
+                     activeCamera.near = activeCamera.far - 0.1;
+
+                activeCamera.updateProjectionMatrix()
+            });
+
+        opticControlFolder.add(activeCamera, 'far', activeCamera.near, 30, 0.1).onChange(() => {
+
+                if(activeCamera.near >= activeCamera.far)
+                     activeCamera.far = activeCamera.near + 0.1;
+
+                activeCamera.updateProjectionMatrix()
+            });
+    }
 }
 
 // ============================================================
@@ -171,14 +252,14 @@ function createCamera() {
         size,
         -size,
             0.1,
-            1000
+            30
     )
 
     perspectiveCamera = new THREE.PerspectiveCamera(
         60,
         aspect,
         0.1,
-        1000
+        30
     )    
 
     perspectiveCamera.position.set(10, 5, 10)
@@ -204,7 +285,7 @@ function createCamera() {
          size,
         -size,
          0.1,
-         1000
+         30
     )
 
     cameraFront.position.set(0, 0, 10)
@@ -217,7 +298,7 @@ function createCamera() {
          size,
         -size,
          0.1,
-         1000
+         30
     )
 
     cameraSide.position.set(10, 0, 0)
@@ -230,7 +311,7 @@ function createCamera() {
          size,
         -size,
          0.1,
-         1000
+         30
     )
 
     cameraTop.position.set(0, 10, 0)
@@ -241,7 +322,7 @@ function createCamera() {
         60,
         aspect,
         0.1,
-        1000
+        30
     )
 
     cameraPerspective.position.set(8, 6, 8)
@@ -250,7 +331,7 @@ function createCamera() {
 
 
 function toggleCamera() {
-    if(params.selectedScene == "Proyections"){
+    if(params.selectedScene == "Projections"){
         if (params.cameraType == "Orthographic") {
             activeCamera = orthographicCamera
         } else {
@@ -264,7 +345,7 @@ function toggleCamera() {
 
 
 function changeCameraPosition(){
-    if(params.selectedScene == "Proyections"){
+    if(params.selectedScene == "Projections"){
         switch (params.position) {
             case "Elevation":
                 lastPosition = new THREE.Vector3(6,0,0);
@@ -305,10 +386,18 @@ function loadScene() {
     switch (params.selectedScene) {
 
         case "Boxes":
+            perspectiveCamera.fov = 60;
+            perspectiveCamera.near = 0.1;
+            perspectiveCamera.far = 30;
+            perspectiveCamera.updateProjectionMatrix();
+
+            activeCamera = perspectiveCamera;
+
             activeScene.add(createScene1( params.valueX, params.valueY, params.valueZ ))
             break
 
-        case "Proyections":
+        case "Projections":
+            toggleCamera();
             activeScene.add(createScene2())
             break
     }
@@ -364,7 +453,7 @@ function startRenderLoop() {
                 activeCamera
             )
 
-        }else if (params.selectedScene == "Proyections"){
+        }else if (params.selectedScene == "Projections"){
 
             const width = container.value.clientWidth
             const height = container.value.clientHeight
