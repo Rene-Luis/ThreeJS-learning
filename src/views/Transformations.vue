@@ -40,8 +40,7 @@ let animationId;
 let scaleMatrix = new THREE.Matrix4();
 let rotationMatrix = new THREE.Matrix4();
 let translationMatrix = new THREE.Matrix4();
-
-let modelMatrix = new THREE.Matrix4();
+let accumulativeMatrix = new THREE.Matrix4();
 
 
 // ============================================================
@@ -50,6 +49,7 @@ let modelMatrix = new THREE.Matrix4();
 
 const params = {
     axis: true,
+    canon:true,
     
     type: 'Translation',
     x:0,
@@ -67,7 +67,7 @@ function createGUI() {
     });
 
     gui.add(params, "axis").name("Axis")
-    .onChange(() => { reloadScene(); });
+        .onChange(() => { reloadScene(); });
 
     const transformFolder = gui.addFolder('Transformations');
 
@@ -82,10 +82,14 @@ function createGUI() {
     transformFolder.add(params, 'x').name('X');
     transformFolder.add(params, 'y').name('Y');
     transformFolder.add(params, 'z').name('Z');
+    transformFolder.add(params, "canon").name("Canonical")
+        .onChange(() => { reloadScene(); });
 
     const actions = { apply() { applyTransformation(); } };
+    const resetAction = { apply() { resetMatrix(); } };
 
     transformFolder.add(actions, 'apply').name('Apply');
+    transformFolder.add(resetAction, 'apply').name('Reset');
 
 }
 
@@ -103,6 +107,7 @@ function applyTransformation() {
 
             const t = MyMatrix.getTranslationMatrix (_x, _y, _z);
             translationMatrix.multiply(t);
+            accumulativeMatrix.premultiply(t);
             break;
         }
 
@@ -114,9 +119,10 @@ function applyTransformation() {
 
             const s = MyMatrix.getScaleMatrix (_x, _y, _z);
             scaleMatrix.multiply(s);
+            accumulativeMatrix.premultiply(s);
 
-            console.log('Scale values:', _x, _y, _z)
-            console.log('S:', s.elements)
+            //console.log('Scale values:', _x, _y, _z)
+            //console.log('S:', s.elements);
 
             break;
         }
@@ -127,22 +133,40 @@ function applyTransformation() {
             const Ry = MyMatrix.getRotationYmatrix(_y);
             const Rz = MyMatrix.getRotationZmatrix(_z);
 
-            rotationMatrix
-                .identity()
+            const newRotation = new THREE.Matrix4();
+
+            newRotation
                 .multiply(Rx)
                 .multiply(Ry)
                 .multiply(Rz);
+
+            rotationMatrix.multiply(newRotation);
+
+            accumulativeMatrix.premultiply(newRotation);
 
             break
         }
     }
 
-    reloadScene();
+    params.x = 0;
+    params.y = 0;
+    params.z = 0;
 
-    // Reset parameters
-    params.x=0;
-    params.y=0;
-    params.z=0;
+    gui.controllersRecursive().forEach(controller => {
+        controller.updateDisplay();
+    });
+
+    reloadScene();    
+}
+
+function resetMatrix() {
+
+    scaleMatrix = new THREE.Matrix4();
+    rotationMatrix = new THREE.Matrix4();
+    translationMatrix = new THREE.Matrix4();
+    accumulativeMatrix = new THREE.Matrix4();
+
+    reloadScene();
 }
 
 
@@ -272,12 +296,16 @@ function loadScene() {
 
     // Tansformaciones
     const newModelMatrix = new THREE.Matrix4();
-    modelMatrix.identity();
 
-    // M = T · R · S
-    newModelMatrix.multiply(translationMatrix).multiply(rotationMatrix).multiply(scaleMatrix);
+    if(params.canon){
+        // M = T · R · S
+        newModelMatrix.multiply(translationMatrix).multiply(rotationMatrix).multiply(scaleMatrix);
+        stickman.applyMatrix4(newModelMatrix);
+    }else{
+        stickman.applyMatrix4(accumulativeMatrix);
+    }
 
-    stickman.applyMatrix4(newModelMatrix);
+    
 
     scene.add(stickman);
 }
