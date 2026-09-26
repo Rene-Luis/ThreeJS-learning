@@ -4,6 +4,7 @@ import Practice0 from '../views/Practice0.vue'
 import Practice1 from '../views/Practice1.vue'
 import Practice2 from '../views/Practice2.vue'
 import Transformations from '../views/Transformations.vue'
+import Cameras from '../views/Cameras.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -28,6 +29,12 @@ const router = createRouter({
       path: '/Transformations',
       name: 'Transformations',
       component: Transformations
+    },
+
+    {
+      path: '/Cameras',
+      name: 'Cameras',
+      component: Cameras
     },
 
   ],
